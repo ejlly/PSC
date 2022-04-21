@@ -5,7 +5,7 @@
 #include <SDL2/SDL.h>
 #include <cmath>
 #include <vector>
-#include <ctime>
+#include <chrono>
 #include <list>
 
 #include "Point.h"
@@ -23,8 +23,6 @@
 
 #define PI 3.1415926535897932384626
 
-#define COLOR_DECAY (.6) //(.6 is a great decay value)
-
 
 #define NB_SURE 1 //TODO : remove this parameter
 #define NB_FILTRE 5
@@ -32,23 +30,27 @@
 #define MAP_MODE 0
 
 
-//#if MAP_MODE == 0
-//#define COLOR_DECAY 0
-//#else
-//#define COLOR_DECAY (.6)
+#if MAP_MODE == 0
+#define COLOR_DECAY 0
+#else
+#define COLOR_DECAY (.6) //(.6 is a great decay value for radar like display)
+#endif
 
 using namespace std;
 
 typedef struct{
 	char key[512];
+
+	char& operator[](int index){
+		if(index > 127)
+			return key[index - 1073741824 + 128];
+		else return key[index];
+	}
+
 } Input;
 
 struct list_Points{
-	#if MAP_MODE == 0
-		list<Point> points;
-	#else
-		vector<Point> points;
-	#endif
+	list<Point> points;
 	
 } points;
 
@@ -60,6 +62,14 @@ void push_Point(int dist, int angle){
 
 void push_Point(Pair d_a){
 	push_Point(d_a.get_x(), d_a.get_y());
+}
+
+void aff_Point(SDL_Renderer *ren, Point pt, Pair screen_pos){
+	int c = (int) pt.get_couleur();
+	SDL_SetRenderDrawColor(ren, c, c, c, 255);
+	int const pos_x(MILIEU_X + pt.get_x() - screen_pos.get_x()), pos_y(MILIEU_Y + pt.get_y() - screen_pos.get_y());
+	//if(0 <= pos_x && pos_x < LENGTH && 0 <= pos_y && pos_y < WIDTH)
+	SDL_RenderDrawPoint(ren, pos_x, pos_y);
 }
 
 void update_liste(){
@@ -75,15 +85,46 @@ void update_liste(){
 	#endif
 }
 
-void draw_liste(SDL_Renderer *ren){
+void draw_Points(SDL_Renderer *ren, Pair screen_pos){
 	for(auto pt: points.points){
-		int c = (int) pt.get_couleur();
-		SDL_SetRenderDrawColor(ren, c, c, c, 255);
-		SDL_RenderDrawPoint(ren, MILIEU_X + pt.get_x(), MILIEU_Y + pt.get_y());
+		aff_Point(ren, pt, screen_pos);
 	}
+	//Draw robot position
 	SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
-	SDL_RenderDrawPoint(ren, MILIEU_X, MILIEU_Y);
+	SDL_RenderDrawPoint(ren, MILIEU_X + Position::get_origine_x() - screen_pos.get_x(), MILIEU_Y + Position::get_origine_y() - screen_pos.get_y());
 	SDL_RenderPresent(ren);
+}
+
+void clear_Screen(SDL_Renderer *ren){
+	SDL_SetRenderDrawColor(ren, 0, 0, 0, 255); //Draw robot position
+	SDL_RenderClear(ren);
+}
+
+#define SCREEN_DX 1
+#define SCREEN_DY 1
+#define SCREEN_ROT (PI/8)
+
+bool deplacer_ecran(SDL_Event &events, Input in, Pair &screen_pos){
+	bool moved(false);
+
+	if(in[SDLK_LEFT] == 1){
+		moved = true;
+		screen_pos.set_x(screen_pos.get_x()+SCREEN_DX);
+	}
+	if(in[SDLK_RIGHT] == 1){
+		moved = true;
+		screen_pos.set_x(screen_pos.get_x()-SCREEN_DX);
+	}
+	if(in[SDLK_UP] == 1){
+		moved = true;
+		screen_pos.set_y(screen_pos.get_y()+SCREEN_DY);
+	}
+	if(in[SDLK_DOWN] == 1){
+		moved = true;
+		screen_pos.set_y(screen_pos.get_y()-SCREEN_DY);
+	}
+
+	return moved;
 }
 
 Pair buffer_filtre[]= {Pair(-1,-1), Pair(-1,-1), Pair(-1,-1)};
@@ -101,7 +142,6 @@ void filtre1(int dist, int angle){
 }
 
 void filtre2(list_Points &points){
-	#if MAP_MODE==0
 	if(points.points.size() < 2*NB_FILTRE) return;
 
 	auto it(points.points.begin());
@@ -127,42 +167,33 @@ void filtre2(list_Points &points){
 		}
 	}
 
-	#else
-	if(points.points.size() < 2*NB_FILTRE) return;
-
-	for(int i(NB_FILTRE); i<points.points.size() - NB_FILTRE; i++){
-		bool is_alone(true);
-		for(int j(1-NB_FILTRE); j<NB_FILTRE; j++){
-			if(points.points[i].dist(points.points[j]) <= Pair::seuil){
-				is_alone = false;
-				break;
-			}			
-			
-		}
-		if(is_alone){
-			points.points[i].set_x(points.points[i+1].get_x());
-			points.points[i].set_y(points.points[i+1].get_y());
-		}
-	}
-	#endif
 }
 
 
-time_t cur_time(time(NULL));
-#define UPDATE_TIME 3 //nb of seconds
-#define UPDATE_DX 10
-#define UPDATE_DY 0
+std::chrono::time_point cur_time(std::chrono::steady_clock::now()); //change from seconds to milliseconds
+#define UPDATE_TIME 25 //nb of milliseconds
+#define UPDATE_DX 0
+#define UPDATE_DY .198 //1.98
 
-void automove(){
-	if(time(NULL) < cur_time + UPDATE_TIME)
-		cur_time = time(NULL);
+bool automove(){
+	std::chrono::time_point now(std::chrono::steady_clock::now());
+	auto tmp = std::chrono::duration_cast<std::chrono::milliseconds>(now-cur_time);
+	std::chrono::duration<int, std::milli> tmp1 = tmp;
+	if(tmp1.count() > UPDATE_TIME){
+		cur_time = now;
+	
+		Position::deplacer(-UPDATE_DX, -UPDATE_DY, 0);
 
-	Position::deplacer(UPDATE_DX, UPDATE_DY, 0);
+		return true;
+	}
+	return false;
 }
 
 
 int main(int argc, char* argv[]){
 	//Initialize the window
+	
+	Pair screen_pos = Pair(0, 0);
 	
 	if(SDL_Init(SDL_INIT_VIDEO) != 0) {
 		printf("error initializing SDL: %s\n", SDL_GetError());
@@ -232,27 +263,48 @@ int main(int argc, char* argv[]){
 				break;
 
 			case SDL_KEYDOWN:
-				if(events.key.keysym.sym < 512)
-					in.key[events.key.keysym.sym] = 1;
+				in[events.key.keysym.sym] = 1;
 				break;
 
 			case SDL_KEYUP:
-				if(in.key[SDLK_p] == 1){
+				if(in[SDLK_p] == 1){
 					cout << "paused\n";
 					for(int i(0); i<NB_SURE; i++) write(file, "s", 1);
-					cout << "Press any key to unpause\n";
-					while(SDL_WaitEvent(&events) && events.type != SDL_KEYUP);
+					cout << "Press\"p\" to unpause\n";
+					while(SDL_WaitEvent(&events)){
+						if(events.type == SDL_KEYDOWN){
+							if(events.key.keysym.sym == SDLK_p) break;
+
+							if(events.key.keysym.sym == SDLK_LEFT)
+								in[events.key.keysym.sym] = 1;
+							if(events.key.keysym.sym == SDLK_RIGHT)
+								in[events.key.keysym.sym] = 1;
+							if(events.key.keysym.sym == SDLK_UP)
+								in[events.key.keysym.sym] = 1;
+							if(events.key.keysym.sym == SDLK_DOWN)
+								in[events.key.keysym.sym] = 1;
+						}
+
+						if(deplacer_ecran(events, in, screen_pos))
+							clear_Screen(ren);
+
+						draw_Points(ren, screen_pos);
+
+						if(events.type == SDL_KEYUP)
+							in[events.key.keysym.sym] = 0;
+						
+					}
 					
 					cout << "unpaused\n";
 					for(int i(0); i<NB_SURE; i++) write(file, "t", 1);
 
 				}
 
-				if(in.key[SDLK_k] == 1){
+				if(in[SDLK_k] == 1){
 					n = -1; //kill the program
 				}
 				
-				else if(in.key[SDLK_m] == 1){ //movement
+				else if(in[SDLK_m] == 1){ //movement
 					for(int i(0); i<NB_SURE; i++) write(file, "s", 1);
 
 					cout << "How dit we move ?\n";
@@ -264,12 +316,16 @@ int main(int argc, char* argv[]){
 					
 					for(int i(0); i<NB_SURE; i++) write(file, "t", 1);
 				}
-				if(events.key.keysym.sym < 512)
-					in.key[events.key.keysym.sym] = 0;
+
+				in[events.key.keysym.sym] = 0;
 				break;
 		}
 
-		//automove();
+		if(deplacer_ecran(events, in, screen_pos) || automove())
+			clear_Screen(ren);
+
+		draw_Points(ren, screen_pos);
+
 
 		if(n < 0){ //kill the program safely
 			
@@ -292,12 +348,11 @@ int main(int argc, char* argv[]){
 					toNegate = false;
 				}
 				if(read_buf[0] == '\n'){
-					cout << "angle is : " << cur_angle << " and distance is : " << cur_dist << "\n";
+					//cout << "angle is : " << cur_angle << " and distance is : " << cur_dist << "\n";
 					filtre1(cur_dist, cur_angle);
 					filtre2(points);
 
 					update_liste();
-					draw_liste(ren);
 
 
 					cur_angle = 0;
