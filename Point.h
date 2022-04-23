@@ -1,7 +1,10 @@
 #ifndef POINT_H
 #define POINT_H
 
+#define PI 3.1415926535897932384626
+
 #include <map>
+#include <cmath>
 
 typedef long double ld;
 
@@ -10,8 +13,9 @@ inline ld ld_abs(ld x){return (x>0)?x:-x;}
 class Pair{
 	protected:
 		ld x,y;
-		constexpr static const ld eps = 1e-10;
 	public:
+		constexpr static const ld seuil = 1;
+
 		inline Pair() {x = 0; y = 0;};
 		Pair(ld x_coords, ld y_coords);
 
@@ -22,31 +26,37 @@ class Pair{
 		inline ld get_y() { return y;}
 		inline void set_x(ld p_x) {x = p_x;}
 		inline void set_y(ld p_y) {y = p_y;}
+		inline ld dist(Pair q) {
+			return std::pow((q.x - x)*(q.x - x) + (q.y - y)*(q.y - y), .5);
+		}
 		inline bool operator==(const Pair &b);
 
+		void print();
 };
 
 class Point : public Pair{
 	private:
-		int couleur;
+		double couleur;
 	public:
 		Point(ld x_coords, ld y_coords);
-		int get_couleur();
-		void set_couleur(int color);
-
+		double get_couleur();
+		void set_couleur(double color);
 };
 
-class Carte{
+
+class Position : public Pair{
+	private:
+		inline static Pair origine = Pair(0,0);
+		inline static ld o_angle = 100;
+	
 	public:
-		std::map<Pair, int> carte;
-
-		Carte();
-
-		void add(Pair pt);
-
-		void add(ld x, ld y);
-
+		static ld get_origine_x();
+		static ld get_origine_y();
+		static void deplacer(ld x, ld y);
+		static void deplacer(ld x, ld y, ld angle);
+		void print_position();
+		static Pair convert(int dist, int angle);
+		static Point convert_p(int dist, int angle);
 };
-
 
 #endif

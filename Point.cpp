@@ -1,11 +1,14 @@
 #include "Point.h"
+#include <iostream>
 
-Pair::Pair(ld x_coords, ld y_coords){
-	Pair tmp = {x_coords, y_coords};
-}
+Pair::Pair(ld x_coords, ld y_coords){x = x_coords; y = y_coords;}
 
 bool Pair::operator==(const Pair &b){
-	return ld_abs(b.x - x) < Pair::eps && ld_abs(b.y - y) < Pair::eps;
+	return ld_abs(b.x - x) < Pair::seuil && ld_abs(b.y - y) < Pair::seuil;
+}
+
+void Pair::print(){
+	std::cout << x << " " << y;
 }
 
 Point::Point(ld x_coords, ld y_coords){
@@ -14,20 +17,38 @@ Point::Point(ld x_coords, ld y_coords){
 	couleur = 255;
 }
 
-int Point::get_couleur(){return couleur;}
+double Point::get_couleur(){return couleur;}
 
-void Point::set_couleur(int c){couleur = c;}
+void Point::set_couleur(double c){this->couleur = c;}
 
-Carte::Carte(){ return;}
-
-void Carte::add(Pair pt){
-	if(carte.contains(pt)){
-		carte[pt]++;
-		return;
-	}
-	carte[pt] = 1;
+ld Position::get_origine_x(){
+	return origine.get_x();
 }
 
-void Carte::add(ld x, ld y){
-	add(Pair(x,y));
+ld Position::get_origine_y(){
+	return origine.get_y();
+}
+
+void Position::deplacer(ld x, ld y){
+	origine.set_x(origine.get_x() + x);
+	origine.set_y(origine.get_y() + y);
+}
+
+void Position::deplacer(ld x, ld y, ld angle){
+	origine.set_x(origine.get_x() + x);
+	origine.set_y(origine.get_y() + y);
+	o_angle += angle;
+}
+
+
+void Position::print_position(){
+	origine.print();
+}
+
+Pair Position::convert(int dist, int angle){
+	return Pair((long double) dist * cos((long double) (angle+o_angle)/180 * PI) - origine.get_x(), - (long double) dist * sin((long double) (angle+o_angle)/180 * PI) - origine.get_y());
+}
+
+Point Position::convert_p(int dist, int angle){
+	return Point((long double) dist * cos((long double) (angle+o_angle)/180 * PI) - origine.get_x(), - (long double) dist * sin((long double) (angle+o_angle)/180 * PI) - origine.get_y());
 }
