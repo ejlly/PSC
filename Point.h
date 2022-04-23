@@ -14,7 +14,7 @@ class Pair{
 	protected:
 		ld x,y;
 	public:
-		constexpr static const ld seuil = 1;
+		constexpr static const ld seuil = 2;
 
 		inline Pair() {x = 0; y = 0;};
 		Pair(ld x_coords, ld y_coords);

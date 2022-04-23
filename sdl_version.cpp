@@ -206,19 +206,25 @@ void filtre2(list_Points &points){
 
 
 	for(int j(1-NB_FILTRE); j < NB_FILTRE; j++, voisins++){
-		if(it->dist(*voisins) <= Pair::seuil){
+		//std::cout << it->dist(*voisins) << " ";
+		ld dist_voisins = it->dist(*voisins);
+		if(1e-7 < dist_voisins && dist_voisins <= Pair::seuil){
 			is_alone = false;
 			break;
 		}
 	}
 
-	if(is_alone) it = points.points.erase(it);
+	if(is_alone){
+		it = points.points.erase(it);
+		//std::cout << "Erased";
+	}
+	//std::cout << "\n";
 }
 
 std::chrono::time_point cur_time(std::chrono::steady_clock::now());
-#define UPDATE_TIME 25 //nb of milliseconds
-#define UPDATE_DX 2.65 //.65
-#define UPDATE_DY 0 //.59
+#define UPDATE_TIME 25 //nb of milliseconds each change
+#define UPDATE_DX .62 //.62
+#define UPDATE_DY 0 //0
 
 bool automove(){
 	std::chrono::time_point now(std::chrono::steady_clock::now());
