@@ -2,14 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 
+def T(x):
+    '''température en degré'''
+    return 400 + 26.7*(x-12.36)
+
 def n(x,z):
     '''définition de l'indice du milieu'''
-    return 1 + abs(z-1)
+    return -.0037 * (T(x)-20) + 1.183
 
 def dn_x(x,z):
-	return 0
-    #h=1e-6
-    #return (n(x+h,z)-n(x-h,z))/(2*h)
+    h=1e-6
+    return (n(x+h,z)-n(x-h,z))/(2*h)
 
 def dn_z(x,z):
 	#return 1 if z > 1 else -1
