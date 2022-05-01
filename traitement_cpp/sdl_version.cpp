@@ -159,7 +159,7 @@ void filtre1(int dist, int angle){
 	if(buffer_filtre[0].get_x() != -1){
 		push_Point(buffer_filtre[0]);
 		if(buffer_filtre[2].get_x() >= DIST_MAX - 2 && dist < DIST_MAX - 2)
-		buffer_filtre[2].set_x((buffer_filtre[0].get_x() + dist)/2);
+		buffer_filtre[2].set_x((buffer_filtre[1].get_x() + dist)/2);
 	}
 	buffer_filtre[0] = buffer_filtre[1];
 	buffer_filtre[1] = buffer_filtre[2];
