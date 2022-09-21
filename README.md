@@ -2,7 +2,7 @@
 
 PSC PHY15 - Utilisation de vecteurs motorisés autonomes pour la détection de foyer d’incendie en parc de stationnement couvert
 
-Réalisé à l'école Polytechnique
+Réalisé à l'école Polytechnique en lien avec la BSPP
 
 
 # Rapport du PSC
